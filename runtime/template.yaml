@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Recipe Picker MCP Server - Part 2: Full MCP Server
+  Lambda Function URL running the full MCP server (tools + resources + prompts)
+  via Lambda Web Adapter.
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs22.x
+    Architectures:
+      - arm64
+
+Resources:
+  # ============================================================
+  # Lambda Function — full MCP server via Lambda Web Adapter
+  # ============================================================
+  RecipeMcpServerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: run.sh
+      CodeUri: dist/
+      Description: Full MCP server with tools, resources, and prompts
+      MemorySize: 512
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:753240598075:layer:LambdaAdapterLayerArm64:28
+      Environment:
+        Variables:
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+          AWS_LWA_PORT: 8000
+      FunctionUrlConfig:
+        AuthType: NONE
+
+Outputs:
+  McpServerUrl:
+    Description: The MCP server endpoint URL — use this in ChatGPT, Claude Desktop, or MCP Inspector
+    Value: !Sub "${RecipeMcpServerFunctionUrl.FunctionUrl}mcp"
+  FunctionUrl:
+    Description: Lambda Function URL (base)
+    Value: !GetAtt RecipeMcpServerFunctionUrl.FunctionUrl

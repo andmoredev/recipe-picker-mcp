@@ -9,3 +9,6 @@ dist/
 # AWS SAM
 .aws-sam/
 samconfig.toml
+
+# Runtime build artifacts
+runtime/dist/
