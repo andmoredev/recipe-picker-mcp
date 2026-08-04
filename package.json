@@ -1,0 +1,20 @@
+{
+  "name": "recipe-picker-mcp",
+  "version": "1.0.0",
+  "description": "MCP Recipe Picker - progressive demo: Gateway (Part 1) and Runtime (Part 2)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit",
+    "test": "npx tsx tools/test.ts",
+    "deploy:gateway": "cd gateway && sam build && sam deploy"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "8.10.147",
+    "@types/node": "^26.1.2",
+    "typescript": "5.8.3"
+  }
+}

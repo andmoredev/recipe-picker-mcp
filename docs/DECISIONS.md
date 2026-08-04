@@ -134,3 +134,109 @@ Each entry follows:
 **Why:** SAM is the sweet spot for serverless demos — it's declarative, the template is readable, and `sam deploy` is a single command. Viewers can see exactly what resources are being created without layers of constructs.  
 **Impact:** `template.yaml` at the root for infra. `sam build && sam deploy` is the deploy workflow.  
 **Video note:** "SAM because the template reads like a blueprint — you can see every resource. No magic classes hiding what's happening."
+
+---
+
+### DEC-009: All-in-one SAM template (Lambda + Gateway + Target)
+**Date:** 2025-08-04  
+**Context:** AgentCore Gateway DOES have CloudFormation resource types: `AWS::BedrockAgentCore::Gateway` and `AWS::BedrockAgentCore::GatewayTarget`. This means we can define everything — Lambda, IAM roles, Gateway, and tool schemas — in a single SAM template.  
+**Decision:** Single `template.yaml` that deploys everything. One `sam deploy` command creates the Lambda, the Gateway, and wires them together with the tool schema defined inline.  
+**Alternatives considered:**
+- agentcore CLI (adds a tool dependency, opinionated CDK under the hood, less transparent)
+- Two-step deploy with separate SAM + agentcore (unnecessary complexity now that CFN supports it)
+- Boto3 scripts (fragile, harder to reproduce)
+
+**Why:** One template = one deploy command = maximum transparency. The viewer can read the template and see exactly what's being created. No hidden CDK constructs, no extra CLI tools to install. SAM's `sam deploy --guided` is familiar to any AWS serverless developer.  
+**Impact:** `template.yaml` defines: IAM role for Gateway, Lambda function, Gateway resource, GatewayTarget resource with inline tool schemas. Deploy with `sam build && sam deploy`.  
+**Video note:** "Everything in one file. One deploy command. You can read this template top to bottom and know exactly what AWS is creating for you. No magic."
+
+---
+
+### DEC-010: Lambda event contract from Gateway
+**Date:** 2025-08-04  
+**Context:** Needed to understand exactly what Gateway sends to our Lambda when a tool is invoked.  
+**Decision:** The event is simply the input properties (flat object matching the tool's inputSchema). The tool name comes from `context.clientContext.custom.bedrockAgentCoreToolName` in format `targetName___toolName`. Our handler strips the prefix and dispatches.  
+**Alternatives considered:** N/A — this is the documented contract.  
+**Why:** Understanding this contract is critical — it determines our Lambda handler's signature.  
+**Impact:** Our handler needs to: 1) extract tool name from context, 2) strip the target prefix, 3) route to the correct tool function, 4) return JSON.  
+**Video note:** "The event your Lambda gets is dead simple — just the arguments. The tool name? It's hiding in the context object with a prefix you need to strip. Let me show you."
+
+---
+
+### DEC-011: Local testing strategy
+**Date:** 2025-08-04  
+**Context:** `sam local invoke` can't simulate AgentCore Gateway because it doesn't pass `clientContext.custom.bedrockAgentCoreToolName`. We need another way to test locally.  
+**Decision:** Test tool logic directly with `npx tsx` since tools are pure functions. The handler routing can only be fully tested after deployment (or with a manual event payload).  
+**Alternatives considered:**
+- Mock the context object in sam local invoke (fragile, requires base64 encoding clientContext)
+- Write unit tests with a test runner (good idea for Part 2, overkill for 3 simple functions now)
+
+**Why:** The tool/transport separation (DEC-004) pays off here — since tools are pure functions, we can import and call them directly without any AWS infrastructure. This is also great for video: "Look, I can test these without deploying anything."  
+**Impact:** Testing is instant — no Docker, no SAM runtime simulation needed.  
+**Video note:** "Because we kept our tools as pure functions, I can test them right here in my terminal. No deploy needed. This is why the architecture matters."
+
+---
+
+### DEC-012: Part 1 deployment verified
+**Date:** 2025-08-04  
+**Context:** Deployed to us-east-1 and verified all 3 tools work through the Gateway.  
+**Decision:** Gateway URL: `https://recipe-picker-bah4kuvity.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp`  
+**Verification:**
+- `tools/list` returns all 3 tools with correct schemas
+- `tools/call` for `discover_recipes` (cuisine=mexican) → returns Tacos al Pastor
+- `tools/call` for `get_recipe_details` (recipeId=tacos-al-pastor) → returns full recipe with 8 ingredients, 6 steps
+- `tools/call` for `get_grocery_list` (recipeIds=[tacos-al-pastor, veggie-stir-fry]) → returns 17 deduplicated items
+
+**Observations:**
+- Gateway wraps tool results in MCP `content` array with `type: "text"` and stringified JSON
+- Tool names are prefixed with `RecipeTools___` (the target name)
+- No auth needed (AuthorizerType: NONE) — curl works directly
+- Response times are fast (Lambda cold start + tool execution)
+
+**Video note:** "Deploy done. Let me show you it works — I'll curl the MCP endpoint directly. See? Three tools, correct schemas. Now let me call one… boom, real data back. This is a working MCP server on AWS."
+
+---
+
+### DEC-013: MCP Inspector for visual testing
+**Date:** 2025-08-04  
+**Context:** Need a visual way to test and demonstrate the MCP server — curl works but isn't camera-friendly. Sunpeak is for MCP Apps (client-side widgets), not bare MCP servers.  
+**Decision:** Use MCP Inspector (`@modelcontextprotocol/inspector`) — the official MCP debugging tool from the MCP project. Supports web UI, CLI, and TUI modes. Connects directly to our Gateway URL over Streamable HTTP.  
+**Alternatives considered:**
+- Sunpeak (designed for MCP App testing with rendered widgets — overkill and wrong use case for Part 1)
+- Claude Desktop only (works but less visual control, can't see raw messages)
+- Custom test script (works but not visual)
+
+**Why:** MCP Inspector is purpose-built for this exact scenario. The web UI is perfect for video — you can visually browse tools, fill in params, call them, and see raw JSON-RPC traffic. The CLI mode is great for quick verification in terminal demos.  
+**Impact:** Zero config needed — just `npx @modelcontextprotocol/inspector`, switch to Streamable HTTP transport, paste the URL.  
+**Video note:** "MCP Inspector is the official testing tool for MCP servers. Think of it like Postman but for MCP. Let me connect to our Gateway… there are our three tools. I can click one, fill in the cuisine, hit call… and there's the result. You can also see the raw JSON-RPC if you want to understand what's happening under the hood."
+
+---
+
+### DEC-014: Two-phase testing workflow
+**Date:** 2025-08-04  
+**Context:** Need a clear testing story for the video — viewers should see tests pass before any deployment happens, then verify the full stack after deployment.  
+**Decision:** Two testing phases:
+1. **Pre-deploy:** `npm test` runs tool logic locally (18 assertions, no AWS needed)
+2. **Post-deploy:** MCP Inspector verifies the full stack (Gateway → Lambda → tools → response)
+
+**Alternatives considered:**
+- Vitest/Jest (heavier setup, more dependencies, overkill for 3 pure functions)
+- Only test post-deploy (loses the "test without deploying" story)
+
+**Why:** The pre-deploy tests prove the architecture decision (DEC-004) pays off — pure functions mean instant local testing. The MCP Inspector phase then proves the full integration works. Two clear moments on camera: "watch all tests pass locally" then "watch the same tools work through the MCP protocol in the cloud."  
+**Impact:** `npm test` uses `tsx` to run a simple assertion script. No test framework dependency. MCP Inspector runs via `npx` (no install needed).  
+**Video note:** "Before I deploy anything — let me prove this works. `npm test`… 18 tests, all green. Now let me deploy and prove it works through the MCP protocol too. MCP Inspector, connect, call the tool… same result. Local logic → cloud endpoint, same code."
+
+---
+
+### DEC-015: Explicit MCP protocol versions (2026-07-28 for ChatGPT)
+**Date:** 2025-08-04  
+**Context:** ChatGPT returned error `-32022: no mutually supported protocol version`. ChatGPT uses the newest MCP spec `2026-07-28` (stateless, no initialize handshake). AgentCore Gateway defaults to only `2025-03-26` and `2025-11-25`.  
+**Decision:** Explicitly set `ProtocolConfiguration.Mcp.SupportedVersions` to include all three versions: `2025-03-26`, `2025-11-25`, `2026-07-28`. This ensures compatibility with all current MCP clients.  
+**Alternatives considered:**
+- Only support latest (would break older clients like some Claude Desktop versions)
+- Leave as default (ChatGPT won't connect)
+
+**Why:** Different MCP clients use different protocol versions. ChatGPT uses `2026-07-28`, Claude Desktop may use `2025-11-25`. Supporting all three ensures maximum compatibility. The `2026-07-28` spec is simpler (stateless, no session) which aligns with our serverless architecture anyway.  
+**Impact:** Added `ProtocolConfiguration` block to SAM template. Fixed immediately via `update-gateway` CLI call.  
+**Video note:** "If you get a 'no mutually supported protocol version' error from ChatGPT, it's because ChatGPT uses the newest MCP spec and Gateway defaults to older ones. One line in the template fixes it — add 2026-07-28 to supported versions."

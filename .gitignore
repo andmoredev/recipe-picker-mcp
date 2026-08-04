@@ -6,12 +6,6 @@ dist/
 .env.*
 !.env.example
 
-# sunpeak
-.sunpeak/
-test-results/
-playwright-report/
-blob-report/
-*-snapshots/
-
-# aws sam
+# AWS SAM
 .aws-sam/
+samconfig.toml
