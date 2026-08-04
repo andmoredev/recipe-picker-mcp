@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# sunpeak
+.sunpeak/
+test-results/
+playwright-report/
+blob-report/
+*-snapshots/
+
+# aws sam
+.aws-sam/
