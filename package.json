@@ -12,7 +12,7 @@
     "test": "npx tsx tools/test.ts",
     "deploy:gateway": "cd gateway && sam build && sam deploy",
     "build:runtime": "npx esbuild runtime/server.ts --bundle --platform=node --target=node22 --format=esm --outfile=runtime/dist/server.js --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
-    "start:runtime": "npx tsx runtime/server.ts"
+    "start:runtime": "npx tsx runtime/adapters/express.ts"
   },
   "devDependencies": {
     "@types/aws-lambda": "8.10.147",
@@ -20,8 +20,8 @@
     "typescript": "5.8.3"
   },
   "dependencies": {
-    "@modelcontextprotocol/node": "^2.0.0",
-    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/ext-apps": "^1.7.5",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.4.3"
   }
 }
