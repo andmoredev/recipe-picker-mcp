@@ -1,0 +1,74 @@
+import { DynamoDBClient, SearchVectorsCommand } from "@aws-sdk/client-dynamodb";
+import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+
+const TABLE_NAME = process.env.TABLE_NAME!;
+const EMBEDDING_MODEL_ID = process.env.EMBEDDING_MODEL_ID!;
+const INDEX_NAME = "RecipeEmbeddingIndex";
+const TOP_K = 5;
+
+const dynamodb = new DynamoDBClient();
+const bedrock = new BedrockRuntimeClient();
+
+async function generateEmbedding(text: string): Promise<number[]> {
+  const response = await bedrock.send(
+    new InvokeModelCommand({
+      modelId: EMBEDDING_MODEL_ID,
+      contentType: "application/json",
+      accept: "application/json",
+      body: JSON.stringify({ inputText: text, dimensions: 1024, normalize: true }),
+    })
+  );
+  const result = JSON.parse(new TextDecoder().decode(response.body));
+  return result.embedding;
+}
+
+export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+  try {
+    if (!event.body) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Request body is required" }) };
+    }
+
+    const { query } = JSON.parse(event.body);
+
+    if (!query || typeof query !== "string") {
+      return { statusCode: 400, body: JSON.stringify({ error: "query string is required" }) };
+    }
+
+    // Embed the search query
+    const queryVector = await generateEmbedding(query);
+
+    // Vector search across all recipes
+    const response = await dynamodb.send(
+      new SearchVectorsCommand({
+        TableName: TABLE_NAME,
+        IndexName: INDEX_NAME,
+        SearchVector: queryVector.map((v) => ({ N: String(v) })),
+        TopK: TOP_K,
+      })
+    );
+
+    const results = (response.SearchResults ?? []).map((result) => {
+      const item = result.Item!;
+      return {
+        recipeId: item.recipeId?.S,
+        name: item.name?.S,
+        cuisine: item.cuisine?.S,
+        description: item.description?.S,
+        dietary: item.dietary?.L?.map((d) => d.S).filter(Boolean) ?? [],
+        prepTimeMinutes: item.prepTimeMinutes?.N ? Number(item.prepTimeMinutes.N) : null,
+        cookTimeMinutes: item.cookTimeMinutes?.N ? Number(item.cookTimeMinutes.N) : null,
+        servings: item.servings?.N ? Number(item.servings.N) : null,
+        score: result.Score,
+      };
+    });
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ query, results }),
+    };
+  } catch (error: any) {
+    console.error("Error searching recipes:", error);
+    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+  }
+}

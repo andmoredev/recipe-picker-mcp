@@ -1,0 +1,117 @@
+{
+  "info": {
+    "name": "Recipe API",
+    "description": "CRUD + Vector Search API for recipes with DynamoDB and Bedrock embeddings",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://ixuls56ukk.execute-api.us-east-1.amazonaws.com/prod"
+    },
+    {
+      "key": "recipeId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Create Recipe",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const response = pm.response.json();",
+              "if (response.recipeId) {",
+              "  pm.collectionVariables.set('recipeId', response.recipeId);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Spaghetti Carbonara\",\n  \"cuisine\": \"italian\",\n  \"dietary\": [],\n  \"prepTimeMinutes\": 10,\n  \"cookTimeMinutes\": 20,\n  \"servings\": 4,\n  \"description\": \"Classic Roman pasta with eggs, cheese, pancetta, and black pepper.\",\n  \"ingredients\": [\n    {\"name\": \"spaghetti\", \"amount\": \"400\", \"unit\": \"g\"},\n    {\"name\": \"pancetta\", \"amount\": \"200\", \"unit\": \"g\"},\n    {\"name\": \"egg yolks\", \"amount\": \"6\", \"unit\": \"large\"},\n    {\"name\": \"pecorino romano\", \"amount\": \"100\", \"unit\": \"g\"}\n  ],\n  \"steps\": [\n    \"Boil pasta until al dente\",\n    \"Cook pancetta until crispy\",\n    \"Mix egg yolks with grated pecorino\",\n    \"Toss hot pasta with pancetta off heat, then stir in egg mixture\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/recipes",
+          "host": ["{{baseUrl}}"],
+          "path": ["recipes"]
+        }
+      }
+    },
+    {
+      "name": "Get Recipe",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/recipes/{{recipeId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["recipes", "{{recipeId}}"]
+        }
+      }
+    },
+    {
+      "name": "Update Recipe",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Spaghetti Carbonara (Spicy)\",\n  \"cuisine\": \"italian\",\n  \"dietary\": [],\n  \"prepTimeMinutes\": 10,\n  \"cookTimeMinutes\": 20,\n  \"servings\": 4,\n  \"description\": \"Spicy Roman pasta with eggs, cheese, pancetta, chili flakes, and black pepper.\",\n  \"ingredients\": [\n    {\"name\": \"spaghetti\", \"amount\": \"400\", \"unit\": \"g\"},\n    {\"name\": \"pancetta\", \"amount\": \"200\", \"unit\": \"g\"},\n    {\"name\": \"egg yolks\", \"amount\": \"6\", \"unit\": \"large\"},\n    {\"name\": \"pecorino romano\", \"amount\": \"100\", \"unit\": \"g\"},\n    {\"name\": \"chili flakes\", \"amount\": \"1\", \"unit\": \"tsp\"}\n  ],\n  \"steps\": [\n    \"Boil pasta until al dente\",\n    \"Cook pancetta with chili flakes until crispy\",\n    \"Mix egg yolks with grated pecorino\",\n    \"Toss hot pasta with pancetta off heat, then stir in egg mixture\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/recipes/{{recipeId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["recipes", "{{recipeId}}"]
+        }
+      }
+    },
+    {
+      "name": "Delete Recipe",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "{{baseUrl}}/recipes/{{recipeId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["recipes", "{{recipeId}}"]
+        }
+      }
+    },
+    {
+      "name": "Search Recipes",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"something spicy with chicken\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/recipes/search",
+          "host": ["{{baseUrl}}"],
+          "path": ["recipes", "search"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,226 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Recipe API with vector search: CRUD operations with inline Bedrock embeddings
+
+Parameters:
+  EmbeddingModelId:
+    Type: String
+    Default: amazon.titan-embed-text-v2:0
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 30
+    MemorySize: 256
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref RecipesTable
+        EMBEDDING_MODEL_ID: !Ref EmbeddingModelId
+
+Resources:
+  # --- DynamoDB Table (AWS-generated name) ---
+  RecipesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: recipeId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: recipeId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # --- REST API ---
+  RecipeApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Description: Recipe CRUD + Vector Search API
+
+  # --- Lambda Functions ---
+  CreateRecipeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      CodeUri: functions/create-recipe/
+      Description: Create a recipe with inline embedding generation
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecipesTable
+        - Statement:
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${EmbeddingModelId}
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RecipeApi
+            Path: /recipes
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - index.ts
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        External:
+          - "@aws-sdk/*"
+
+  GetRecipeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      CodeUri: functions/get-recipe/
+      Description: Get a recipe by ID
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref RecipesTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RecipeApi
+            Path: /recipes/{recipeId}
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - index.ts
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        External:
+          - "@aws-sdk/*"
+
+  UpdateRecipeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      CodeUri: functions/update-recipe/
+      Description: Update a recipe with inline embedding regeneration
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecipesTable
+        - Statement:
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${EmbeddingModelId}
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RecipeApi
+            Path: /recipes/{recipeId}
+            Method: PUT
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - index.ts
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        External:
+          - "@aws-sdk/*"
+
+  DeleteRecipeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      CodeUri: functions/delete-recipe/
+      Description: Delete a recipe by ID
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecipesTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RecipeApi
+            Path: /recipes/{recipeId}
+            Method: DELETE
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - index.ts
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        External:
+          - "@aws-sdk/*"
+
+  SearchRecipesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      CodeUri: functions/search-recipes/
+      Description: Search recipes using vector similarity (embeds query inline)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RecipesTable
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:*
+              Resource:
+                - !GetAtt RecipesTable.Arn
+                - !Sub ${RecipesTable.Arn}/index/*
+        - Statement:
+            - Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${EmbeddingModelId}
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RecipeApi
+            Path: /recipes/search
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - index.ts
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        External:
+          - "@aws-sdk/client-bedrock-runtime"
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${RecipeApi}.execute-api.${AWS::Region}.amazonaws.com/prod
+  RecipesTableName:
+    Description: DynamoDB table name (AWS-generated)
+    Value: !Ref RecipesTable
+  RecipesTableArn:
+    Description: DynamoDB table ARN
+    Value: !GetAtt RecipesTable.Arn

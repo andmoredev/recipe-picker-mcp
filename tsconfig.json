@@ -11,6 +11,6 @@
     "declaration": true,
     "resolveJsonModule": true
   },
-  "include": ["backup/tools/**/*", "gateway/**/*", "backup/runtime/**/*"],
+  "include": ["scripts/**/*", "functions/**/*"],
   "exclude": ["node_modules", "dist"]
 }

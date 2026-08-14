@@ -20,6 +20,10 @@
     "typescript": "5.8.3"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1105.0",
+    "@aws-sdk/client-cloudformation": "^3.1109.0",
+    "@aws-sdk/client-dynamodb": "^3.1105.0",
+    "@aws-sdk/util-dynamodb": "^3.996.7",
     "@modelcontextprotocol/ext-apps": "^1.7.5",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.4.3"
