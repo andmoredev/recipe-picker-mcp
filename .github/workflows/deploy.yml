@@ -82,10 +82,10 @@ jobs:
 
           echo "Checking vector index on table: $TABLE_NAME"
 
-          # Check if vector index exists
-          INDEX_EXISTS=$(aws dynamodb describe-table --table-name "$TABLE_NAME" --query "Table.VectorIndexes[?IndexName=='$INDEX_NAME'].IndexName" --output text 2>/dev/null || echo "")
+          # Check if vector index exists by looking at raw describe-table output
+          TABLE_DESC=$(aws dynamodb describe-table --table-name "$TABLE_NAME" --output json)
 
-          if [ "$INDEX_EXISTS" = "$INDEX_NAME" ]; then
+          if echo "$TABLE_DESC" | grep -q "$INDEX_NAME"; then
             echo "✓ Vector index '$INDEX_NAME' already exists"
           else
             echo "Creating vector index '$INDEX_NAME'..."
