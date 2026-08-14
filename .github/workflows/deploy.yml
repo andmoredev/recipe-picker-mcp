@@ -53,6 +53,7 @@ jobs:
 
       - name: SAM Build & Deploy
         run: |
+          export PATH="$PWD/node_modules/.bin:$PATH"
           ROLE_ARN_FLAG=""
           if [ -n "${{ vars.CFN_EXECUTION_ROLE_ARN }}" ]; then
             ROLE_ARN_FLAG="--role-arn ${{ vars.CFN_EXECUTION_ROLE_ARN }}"
