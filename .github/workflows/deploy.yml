@@ -63,6 +63,7 @@ jobs:
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --stack-name recipe-embedding-pipeline \
+            --s3-bucket ${{ vars.ARTIFACTS_BUCKET }} \
             --capabilities CAPABILITY_IAM \
             $ROLE_ARN_FLAG
 
