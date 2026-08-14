@@ -1,0 +1,118 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'functions/**'
+      - 'template.yaml'
+      - 'samconfig.yaml'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'functions/**'
+      - 'template.yaml'
+      - 'samconfig.yaml'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: SAM Build & Deploy
+        run: |
+          ROLE_ARN_FLAG=""
+          if [ -n "${{ vars.CFN_EXECUTION_ROLE_ARN }}" ]; then
+            ROLE_ARN_FLAG="--role-arn ${{ vars.CFN_EXECUTION_ROLE_ARN }}"
+          fi
+          sam build
+          sam deploy \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --stack-name recipe-embedding-pipeline \
+            --s3-bucket ${{ vars.ARTIFACTS_BUCKET }} \
+            --capabilities CAPABILITY_IAM \
+            $ROLE_ARN_FLAG
+
+      - name: Get stack outputs
+        id: stack
+        run: |
+          TABLE_NAME=$(aws cloudformation describe-stacks --stack-name recipe-embedding-pipeline --query "Stacks[0].Outputs[?OutputKey=='RecipesTableName'].OutputValue" --output text)
+          API_URL=$(aws cloudformation describe-stacks --stack-name recipe-embedding-pipeline --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          echo "table_name=$TABLE_NAME" >> $GITHUB_OUTPUT
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+
+      - name: Ensure vector index
+        run: |
+          TABLE_NAME="${{ steps.stack.outputs.table_name }}"
+          INDEX_NAME="RecipeEmbeddingIndex"
+
+          echo "Checking vector index on table: $TABLE_NAME"
+
+          # Check if vector index exists
+          INDEX_EXISTS=$(aws dynamodb describe-table --table-name "$TABLE_NAME" --query "Table.VectorIndexes[?IndexName=='$INDEX_NAME'].IndexName" --output text 2>/dev/null || echo "")
+
+          if [ "$INDEX_EXISTS" = "$INDEX_NAME" ]; then
+            echo "✓ Vector index '$INDEX_NAME' already exists"
+          else
+            echo "Creating vector index '$INDEX_NAME'..."
+            aws dynamodb update-table \
+              --table-name "$TABLE_NAME" \
+              --attribute-definitions AttributeName=cuisine,AttributeType=S \
+              --vector-index-updates '[{
+                "Create": {
+                  "IndexName": "RecipeEmbeddingIndex",
+                  "VectorAttribute": {"AttributeName": "embedding"},
+                  "SearchSchema": [{"AttributeName": "cuisine", "SearchSchemaElementType": "INLINE_FILTER"}],
+                  "Projection": {"ProjectionType": "ALL"},
+                  "Dimensions": 1024,
+                  "DistanceFunction": "COSINE"
+                }
+              }]'
+
+            echo "Waiting for table to become ACTIVE..."
+            aws dynamodb wait table-exists --table-name "$TABLE_NAME"
+            echo "✓ Vector index created"
+          fi
+
+      - name: Print outputs
+        run: |
+          echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Output | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| API URL | ${{ steps.stack.outputs.api_url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Table Name | ${{ steps.stack.outputs.table_name }} |" >> $GITHUB_STEP_SUMMARY
