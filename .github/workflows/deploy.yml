@@ -48,21 +48,21 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ secrets.PIPELINE_EXECUTION_ROLE }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: SAM Build & Deploy
         run: |
           ROLE_ARN_FLAG=""
-          if [ -n "${{ secrets.CLOUDFORMATION_EXECUTION_ROLE }}" ]; then
-            ROLE_ARN_FLAG="--role-arn ${{ secrets.CLOUDFORMATION_EXECUTION_ROLE }}"
+          if [ -n "${{ vars.CFN_EXECUTION_ROLE_ARN }}" ]; then
+            ROLE_ARN_FLAG="--role-arn ${{ vars.CFN_EXECUTION_ROLE_ARN }}"
           fi
           sam build
           sam deploy \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --stack-name recipe-embedding-pipeline \
-            --s3-bucket ${{ secrets.ARTIFACTS_BUCKET_NAME }} \
+            --s3-bucket ${{ vars.ARTIFACTS_BUCKET }} \
             --capabilities CAPABILITY_IAM \
             $ROLE_ARN_FLAG
 
