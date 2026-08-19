@@ -94,9 +94,9 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           name: { S: recipe.name },
           cuisine: { S: recipe.cuisine },
           dietary: { L: (recipe.dietary ?? []).map((d) => ({ S: d })) },
-          prepTimeMinutes: { N: String(recipe.prepTimeMinutes) },
-          cookTimeMinutes: { N: String(recipe.cookTimeMinutes) },
-          servings: { N: String(recipe.servings) },
+          prepTimeMinutes: { N: String(recipe.prepTimeMinutes ?? 0) },
+          cookTimeMinutes: { N: String(recipe.cookTimeMinutes ?? 0) },
+          servings: { N: String(recipe.servings ?? 1) },
           description: { S: recipe.description },
           ingredients: {
             L: recipe.ingredients.map((i) => ({

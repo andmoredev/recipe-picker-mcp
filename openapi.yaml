@@ -442,13 +442,21 @@ components:
         error:
           type: string
 
+    GatewayErrorResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
   responses:
     badRequest:
       description: Bad request
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/GatewayErrorResponse'
 
     notFound:
       description: Resource not found
