@@ -1,0 +1,380 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: Recipe API
+  description: Recipe CRUD API with semantic vector search powered by Amazon Bedrock
+  contact:
+    name: Andres Moreno
+
+tags:
+  - name: Recipe
+    description: Recipe CRUD operations
+  - name: Search
+    description: Semantic search
+
+servers:
+  - url: https://example.com/prod
+    description: Production
+
+x-amazon-apigateway-request-validators:
+  Validate body, query string parameters, and headers:
+    validateRequestParameters: true
+    validateRequestBody: true
+
+x-amazon-apigateway-gateway-responses:
+  BAD_REQUEST_BODY:
+    statusCode: 400
+    responseTemplates:
+      application/json: '{ "message": "$context.error.validationErrorString" }'
+  DEFAULT_5XX:
+    statusCode: 500
+    responseTemplates:
+      application/json: '{ "message": "Internal server error" }'
+
+paths:
+  /recipes:
+    post:
+      summary: Create a recipe
+      operationId: createRecipe
+      description: Creates a new recipe and generates a vector embedding for semantic search.
+      tags:
+        - Recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeInput'
+      responses:
+        '201':
+          description: Recipe created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateRecipeResponse'
+        '400':
+          $ref: '#/components/responses/badRequest'
+        '500':
+          $ref: '#/components/responses/unexpectedError'
+      x-amazon-apigateway-request-validator: Validate body, query string parameters, and headers
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateRecipeFunction.Arn}/invocations
+        httpMethod: POST
+        type: aws_proxy
+
+  /recipes/{recipeId}:
+    get:
+      summary: Get a recipe
+      operationId: getRecipe
+      description: Retrieves a recipe by its ID.
+      tags:
+        - Recipe
+      parameters:
+        - $ref: '#/components/parameters/recipeId'
+      responses:
+        '200':
+          description: Recipe found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipe'
+        '400':
+          $ref: '#/components/responses/badRequest'
+        '404':
+          $ref: '#/components/responses/notFound'
+        '500':
+          $ref: '#/components/responses/unexpectedError'
+      x-amazon-apigateway-request-validator: Validate body, query string parameters, and headers
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetRecipeFunction.Arn}/invocations
+        httpMethod: POST
+        type: aws_proxy
+
+    put:
+      summary: Update a recipe
+      operationId: updateRecipe
+      description: Replaces an existing recipe and regenerates its vector embedding.
+      tags:
+        - Recipe
+      parameters:
+        - $ref: '#/components/parameters/recipeId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecipeInput'
+      responses:
+        '200':
+          description: Recipe updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateRecipeResponse'
+        '400':
+          $ref: '#/components/responses/badRequest'
+        '404':
+          $ref: '#/components/responses/notFound'
+        '500':
+          $ref: '#/components/responses/unexpectedError'
+      x-amazon-apigateway-request-validator: Validate body, query string parameters, and headers
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateRecipeFunction.Arn}/invocations
+        httpMethod: POST
+        type: aws_proxy
+
+    delete:
+      summary: Delete a recipe
+      operationId: deleteRecipe
+      description: Deletes a recipe by its ID.
+      tags:
+        - Recipe
+      parameters:
+        - $ref: '#/components/parameters/recipeId'
+      responses:
+        '200':
+          description: Recipe deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          $ref: '#/components/responses/notFound'
+        '500':
+          $ref: '#/components/responses/unexpectedError'
+      x-amazon-apigateway-request-validator: Validate body, query string parameters, and headers
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteRecipeFunction.Arn}/invocations
+        httpMethod: POST
+        type: aws_proxy
+
+  /recipes/search:
+    post:
+      summary: Search recipes
+      operationId: searchRecipes
+      description: Performs semantic vector search across all recipes using a natural-language query.
+      tags:
+        - Search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchInput'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          $ref: '#/components/responses/badRequest'
+        '500':
+          $ref: '#/components/responses/unexpectedError'
+      x-amazon-apigateway-request-validator: Validate body, query string parameters, and headers
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SearchRecipesFunction.Arn}/invocations
+        httpMethod: POST
+        type: aws_proxy
+
+components:
+  parameters:
+    recipeId:
+      name: recipeId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique recipe identifier
+
+  schemas:
+    Ingredient:
+      type: object
+      required:
+        - name
+        - amount
+        - unit
+      properties:
+        name:
+          type: string
+          minLength: 1
+        amount:
+          type: string
+          minLength: 1
+        unit:
+          type: string
+          minLength: 1
+
+    RecipeInput:
+      type: object
+      required:
+        - name
+        - cuisine
+        - description
+        - ingredients
+        - steps
+      properties:
+        name:
+          type: string
+          minLength: 1
+        cuisine:
+          type: string
+          minLength: 1
+        dietary:
+          type: array
+          items:
+            type: string
+        prepTimeMinutes:
+          type: integer
+          minimum: 0
+        cookTimeMinutes:
+          type: integer
+          minimum: 0
+        servings:
+          type: integer
+          minimum: 1
+        description:
+          type: string
+          minLength: 1
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ingredient'
+          minItems: 1
+        steps:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+
+    Recipe:
+      allOf:
+        - type: object
+          required:
+            - recipeId
+          properties:
+            recipeId:
+              type: string
+              format: uuid
+        - $ref: '#/components/schemas/RecipeInput'
+
+    CreateRecipeResponse:
+      type: object
+      required:
+        - recipeId
+        - message
+      properties:
+        recipeId:
+          type: string
+          format: uuid
+        message:
+          type: string
+          enum:
+            - Recipe created
+
+    UpdateRecipeResponse:
+      type: object
+      required:
+        - recipeId
+        - message
+      properties:
+        recipeId:
+          type: string
+          format: uuid
+        message:
+          type: string
+          enum:
+            - Recipe updated
+
+    MessageResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    SearchInput:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          minLength: 1
+
+    SearchResult:
+      type: object
+      properties:
+        recipeId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        cuisine:
+          type: string
+        description:
+          type: string
+        dietary:
+          type: array
+          items:
+            type: string
+        prepTimeMinutes:
+          type: integer
+        cookTimeMinutes:
+          type: integer
+        servings:
+          type: integer
+        score:
+          type: number
+
+    SearchResponse:
+      type: object
+      required:
+        - query
+        - results
+      properties:
+        query:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+
+  responses:
+    badRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    notFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    unexpectedError:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
