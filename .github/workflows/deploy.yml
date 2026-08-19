@@ -123,9 +123,13 @@ jobs:
           echo "| Table Name | ${{ steps.stack.outputs.table_name }} |" >> $GITHUB_STEP_SUMMARY
 
   api-tests:
-    name: API Contract Tests
+    name: API Tests (${{ matrix.phase }})
     needs: deploy
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        phase: [examples, coverage, fuzzing, stateful]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -135,4 +139,5 @@ jobs:
         with:
           schema: openapi.yaml
           base-url: ${{ needs.deploy.outputs.api_url }}
-          args: '--phases examples,coverage,fuzzing,stateful --report junit --exclude-checks unsupported_method'
+          args: '--phases ${{ matrix.phase }} --report junit --exclude-checks unsupported_method'
+          coverage-artifact-name: schema-coverage-report-${{ matrix.phase }}
