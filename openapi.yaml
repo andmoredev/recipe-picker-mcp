@@ -459,7 +459,9 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/GatewayErrorResponse'
+            oneOf:
+              - $ref: '#/components/schemas/GatewayErrorResponse'
+              - $ref: '#/components/schemas/ErrorResponse'
 
     notFound:
       description: Resource not found

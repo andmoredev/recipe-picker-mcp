@@ -68,6 +68,12 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return { statusCode: 400, body: JSON.stringify({ error: "Missing required fields: name, cuisine, description, ingredients, steps" }) };
     }
 
+    if ((recipe.prepTimeMinutes != null && (recipe.prepTimeMinutes < 0 || recipe.prepTimeMinutes > 10080)) ||
+        (recipe.cookTimeMinutes != null && (recipe.cookTimeMinutes < 0 || recipe.cookTimeMinutes > 10080)) ||
+        (recipe.servings != null && (recipe.servings < 1 || recipe.servings > 1000))) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Numeric fields out of range: prepTimeMinutes/cookTimeMinutes (0-10080), servings (1-1000)" }) };
+    }
+
     const recipeId = randomUUID();
 
     // Generate embedding inline
