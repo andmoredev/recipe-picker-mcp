@@ -45,6 +45,32 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RecipeInput'
+            example:
+              name: Spaghetti Carbonara
+              cuisine: italian
+              dietary: []
+              prepTimeMinutes: 10
+              cookTimeMinutes: 20
+              servings: 4
+              description: Classic Roman pasta with eggs, cheese, pancetta, and black pepper.
+              ingredients:
+                - name: spaghetti
+                  amount: "400"
+                  unit: g
+                - name: pancetta
+                  amount: "200"
+                  unit: g
+                - name: egg yolks
+                  amount: "6"
+                  unit: large
+                - name: pecorino romano
+                  amount: "100"
+                  unit: g
+              steps:
+                - Boil pasta until al dente
+                - Cook pancetta until crispy
+                - Mix egg yolks with grated pecorino
+                - Toss hot pasta with pancetta off heat, then stir in egg mixture
       responses:
         '201':
           description: Recipe created
@@ -106,6 +132,35 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RecipeInput'
+            example:
+              name: Spaghetti Carbonara (Spicy)
+              cuisine: italian
+              dietary: []
+              prepTimeMinutes: 10
+              cookTimeMinutes: 20
+              servings: 4
+              description: Spicy Roman pasta with eggs, cheese, pancetta, chili flakes, and black pepper.
+              ingredients:
+                - name: spaghetti
+                  amount: "400"
+                  unit: g
+                - name: pancetta
+                  amount: "200"
+                  unit: g
+                - name: egg yolks
+                  amount: "6"
+                  unit: large
+                - name: pecorino romano
+                  amount: "100"
+                  unit: g
+                - name: chili flakes
+                  amount: "1"
+                  unit: tsp
+              steps:
+                - Boil pasta until al dente
+                - Cook pancetta with chili flakes until crispy
+                - Mix egg yolks with grated pecorino
+                - Toss hot pasta with pancetta off heat, then stir in egg mixture
       responses:
         '200':
           description: Recipe updated
@@ -165,6 +220,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SearchInput'
+            example:
+              query: something spicy with chicken
       responses:
         '200':
           description: Search results
