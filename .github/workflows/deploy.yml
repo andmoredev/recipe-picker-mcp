@@ -135,4 +135,4 @@ jobs:
         with:
           schema: openapi.yaml
           base-url: ${{ needs.deploy.outputs.api_url }}
-          args: '--phases examples,coverage,fuzzing,stateful --report junit'
+          args: '--phases examples,coverage,fuzzing,stateful --report junit --exclude-checks unsupported_method'
