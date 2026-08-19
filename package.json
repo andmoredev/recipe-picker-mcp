@@ -15,10 +15,10 @@
     "start:runtime": "npx tsx runtime/adapters/express.ts"
   },
   "devDependencies": {
-    "@types/aws-lambda": "8.10.147",
-    "@types/node": "^26.1.2",
+    "@types/aws-lambda": "8.10.162",
+    "@types/node": "^26.2.0",
     "esbuild": "^0.28.2",
-    "typescript": "5.8.3"
+    "typescript": "7.0.2"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1105.0",
