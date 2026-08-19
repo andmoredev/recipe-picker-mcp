@@ -135,6 +135,6 @@ jobs:
       - name: Run Schemathesis
         run: |
           st run openapi.yaml \
-            --base-url ${{ needs.deploy.outputs.api_url }} \
+            --url ${{ needs.deploy.outputs.api_url }} \
             --hypothesis-phases=explicit \
             --checks all
