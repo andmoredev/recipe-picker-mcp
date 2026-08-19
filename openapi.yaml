@@ -78,6 +78,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreateRecipeResponse'
+          links:
+            GetCreatedRecipe:
+              operationId: getRecipe
+              parameters:
+                recipeId: $response.body#/recipeId
+              description: Retrieve the newly created recipe
+            UpdateCreatedRecipe:
+              operationId: updateRecipe
+              parameters:
+                recipeId: $response.body#/recipeId
+              description: Update the newly created recipe
+            DeleteCreatedRecipe:
+              operationId: deleteRecipe
+              parameters:
+                recipeId: $response.body#/recipeId
+              description: Delete the newly created recipe
         '400':
           $ref: '#/components/responses/badRequest'
         '500':
@@ -168,6 +184,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UpdateRecipeResponse'
+          links:
+            GetUpdatedRecipe:
+              operationId: getRecipe
+              parameters:
+                recipeId: $response.body#/recipeId
+              description: Retrieve the updated recipe
+            DeleteUpdatedRecipe:
+              operationId: deleteRecipe
+              parameters:
+                recipeId: $response.body#/recipeId
+              description: Delete the updated recipe
         '400':
           $ref: '#/components/responses/badRequest'
         '404':
