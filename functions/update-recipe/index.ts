@@ -82,6 +82,12 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return { statusCode: 400, body: JSON.stringify({ error: "Missing required fields: name, cuisine, description, ingredients, steps" }) };
     }
 
+    if ((recipe.prepTimeMinutes != null && (recipe.prepTimeMinutes < 0 || recipe.prepTimeMinutes > 10080)) ||
+        (recipe.cookTimeMinutes != null && (recipe.cookTimeMinutes < 0 || recipe.cookTimeMinutes > 10080)) ||
+        (recipe.servings != null && (recipe.servings < 1 || recipe.servings > 1000))) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Numeric fields out of range: prepTimeMinutes/cookTimeMinutes (0-10080), servings (1-1000)" }) };
+    }
+
     // Regenerate embedding with updated content
     const embeddingText = buildEmbeddingText(recipe);
     const embedding = await generateEmbedding(embeddingText);
@@ -94,9 +100,9 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           name: { S: recipe.name },
           cuisine: { S: recipe.cuisine },
           dietary: { L: (recipe.dietary ?? []).map((d) => ({ S: d })) },
-          prepTimeMinutes: { N: String(recipe.prepTimeMinutes) },
-          cookTimeMinutes: { N: String(recipe.cookTimeMinutes) },
-          servings: { N: String(recipe.servings) },
+          prepTimeMinutes: { N: String(recipe.prepTimeMinutes ?? 0) },
+          cookTimeMinutes: { N: String(recipe.cookTimeMinutes ?? 0) },
+          servings: { N: String(recipe.servings ?? 1) },
           description: { S: recipe.description },
           ingredients: {
             L: recipe.ingredients.map((i) => ({

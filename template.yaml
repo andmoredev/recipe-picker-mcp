@@ -39,6 +39,11 @@ Resources:
     Properties:
       StageName: prod
       Description: Recipe CRUD + Vector Search API
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ./openapi.yaml
 
   # --- Lambda Functions ---
   CreateRecipeFunction:
