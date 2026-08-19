@@ -129,12 +129,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Install Schemathesis
-        run: pip install schemathesis
-
       - name: Run Schemathesis
-        run: |
-          st run openapi.yaml \
-            --url ${{ needs.deploy.outputs.api_url }} \
-            --phases examples \
-            --checks all
+        uses: schemathesis/action@v3
+        with:
+          schema: openapi.yaml
+          base-url: ${{ needs.deploy.outputs.api_url }}
+          args: '--phases examples'
