@@ -327,15 +327,15 @@ components:
             pattern: '^[a-zA-Z][a-zA-Z\s\-]+$'
           maxItems: 20
         prepTimeMinutes:
-          type: integer
+          type: number
           minimum: 0
           maximum: 10080
         cookTimeMinutes:
-          type: integer
+          type: number
           minimum: 0
           maximum: 10080
         servings:
-          type: integer
+          type: number
           minimum: 1
           maximum: 1000
         description:
