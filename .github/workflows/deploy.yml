@@ -30,15 +30,30 @@ permissions:
   contents: read
   pull-requests: write
 
+env:
+  PROD_STACK_NAME: recipe-embedding-pipeline
+
 jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
     outputs:
       api_url: ${{ steps.stack.outputs.api_url }}
+      stack_name: ${{ steps.env.outputs.stack_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Set environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            STACK_NAME="recipe-pipeline-pr-${{ github.event.number }}"
+          else
+            STACK_NAME="${{ env.PROD_STACK_NAME }}"
+          fi
+          echo "stack_name=$STACK_NAME" >> $GITHUB_OUTPUT
+          echo "Deploying stack: $STACK_NAME"
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -67,7 +82,7 @@ jobs:
           sam deploy \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
-            --stack-name recipe-embedding-pipeline \
+            --stack-name ${{ steps.env.outputs.stack_name }} \
             --s3-bucket ${{ vars.ARTIFACTS_BUCKET }} \
             --capabilities CAPABILITY_IAM \
             $ROLE_ARN_FLAG
@@ -75,8 +90,9 @@ jobs:
       - name: Get stack outputs
         id: stack
         run: |
-          TABLE_NAME=$(aws cloudformation describe-stacks --stack-name recipe-embedding-pipeline --query "Stacks[0].Outputs[?OutputKey=='RecipesTableName'].OutputValue" --output text)
-          API_URL=$(aws cloudformation describe-stacks --stack-name recipe-embedding-pipeline --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          STACK_NAME="${{ steps.env.outputs.stack_name }}"
+          TABLE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='RecipesTableName'].OutputValue" --output text)
+          API_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
           echo "table_name=$TABLE_NAME" >> $GITHUB_OUTPUT
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
 
@@ -87,7 +103,6 @@ jobs:
 
           echo "Checking vector index on table: $TABLE_NAME"
 
-          # Check if vector index exists by looking at raw describe-table output
           TABLE_DESC=$(aws dynamodb describe-table --table-name "$TABLE_NAME" --output json)
 
           if echo "$TABLE_DESC" | grep -q "$INDEX_NAME"; then
@@ -119,6 +134,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Output | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Stack | ${{ steps.env.outputs.stack_name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| API URL | ${{ steps.stack.outputs.api_url }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Table Name | ${{ steps.stack.outputs.table_name }} |" >> $GITHUB_STEP_SUMMARY
 
@@ -136,3 +152,26 @@ jobs:
           schema: openapi.yaml
           base-url: ${{ needs.deploy.outputs.api_url }}
           args: '--phases examples,coverage,fuzzing,stateful --workers auto --report junit --exclude-checks unsupported_method'
+
+  teardown:
+    name: Teardown PR Environment
+    needs: [deploy, api-tests]
+    if: github.event_name == 'pull_request' && always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Delete PR stack
+        run: |
+          STACK_NAME="${{ needs.deploy.outputs.stack_name }}"
+          echo "Deleting temporary stack: $STACK_NAME"
+          sam delete \
+            --stack-name "$STACK_NAME" \
+            --no-prompts \
+            --s3-bucket ${{ vars.ARTIFACTS_BUCKET }} \
+            --region ${{ vars.AWS_REGION }}
+          echo "✓ Stack deleted"
