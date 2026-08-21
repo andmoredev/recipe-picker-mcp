@@ -50,6 +50,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const results = (response.SearchResults ?? []).map((result) => {
       const item = result.Item!;
+      // Convert cosine distance (0=identical, 2=opposite) to similarity percentage
+      const similarity = Math.round((1 - (result.Score ?? 1)) * 100) / 100;
       return {
         recipeId: item.recipeId?.S,
         name: item.name?.S,
@@ -59,7 +61,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         prepTimeMinutes: item.prepTimeMinutes?.N ? Number(item.prepTimeMinutes.N) : null,
         cookTimeMinutes: item.cookTimeMinutes?.N ? Number(item.cookTimeMinutes.N) : null,
         servings: item.servings?.N ? Number(item.servings.N) : null,
-        score: result.Score,
+        similarity,
       };
     });
 

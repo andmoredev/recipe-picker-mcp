@@ -21,7 +21,7 @@ Globals:
         EMBEDDING_MODEL_ID: !Ref EmbeddingModelId
 
 Resources:
-  # --- DynamoDB Table (AWS-generated name) ---
+  # --- DynamoDB Table ---
   RecipesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -217,7 +217,7 @@ Resources:
         Banner:
           - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
         External:
-          - "@aws-sdk/client-bedrock-runtime"
+          - "@aws-sdk/*"
 
 Outputs:
   ApiUrl:
