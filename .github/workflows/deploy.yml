@@ -48,7 +48,7 @@ jobs:
         id: env
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            STACK_NAME="recipe-pipeline-pr-${{ github.event.number }}"
+            STACK_NAME="recipe-embedding-pipeline-pr-${{ github.event.number }}"
           else
             STACK_NAME="${{ env.PROD_STACK_NAME }}"
           fi
