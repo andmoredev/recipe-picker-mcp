@@ -289,13 +289,16 @@ components:
       properties:
         name:
           type: string
-          minLength: 1
+          minLength: 2
+          maxLength: 100
         amount:
           type: string
           minLength: 1
+          maxLength: 20
         unit:
           type: string
           minLength: 1
+          maxLength: 30
 
     RecipeInput:
       type: object
@@ -308,14 +311,22 @@ components:
       properties:
         name:
           type: string
-          minLength: 1
+          minLength: 2
+          maxLength: 200
+          pattern: '^[\p{L}\p{N}\p{P}\p{Z}]+$'
         cuisine:
           type: string
-          minLength: 1
+          minLength: 2
+          maxLength: 100
+          pattern: '^[a-zA-Z][a-zA-Z\s\-]+$'
         dietary:
           type: array
           items:
             type: string
+            minLength: 2
+            maxLength: 50
+            pattern: '^[a-zA-Z][a-zA-Z\s\-]+$'
+          maxItems: 20
         prepTimeMinutes:
           type: integer
           minimum: 0
@@ -330,18 +341,22 @@ components:
           maximum: 1000
         description:
           type: string
-          minLength: 1
+          minLength: 10
+          maxLength: 2000
         ingredients:
           type: array
           items:
             $ref: '#/components/schemas/Ingredient'
           minItems: 1
+          maxItems: 100
         steps:
           type: array
           items:
             type: string
-            minLength: 1
+            minLength: 5
+            maxLength: 1000
           minItems: 1
+          maxItems: 50
 
     Recipe:
       allOf:
