@@ -313,7 +313,6 @@ components:
           type: string
           minLength: 2
           maxLength: 200
-          pattern: '^[\p{L}\p{N}\p{P}\p{Z}]+$'
         cuisine:
           type: string
           minLength: 2
